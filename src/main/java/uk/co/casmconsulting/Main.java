@@ -48,22 +48,9 @@ public class Main extends JDialog {
     }
 
     private synchronized void onInit() {
-        try {
-            Params params = new Params();
-            if (pfwd != null) {
-                pfwd.stop();
-            }
-            pfwd = new PortForwarding();
-            pfwd.start(params.user, params.host);
-            postgresConnection = ConnectAndRun.getPostgresConnection();
-            ConnectAndRun.initPostgresForeignTable(postgresConnection, params.db, params.table);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            System.out.println("Error: " + e.getMessage());
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println("Error: " + e.getMessage());
-        }
+        buttonCopy.setEnabled(false);
+        buttonUpdate.setEnabled(false);
+        new MyWorker().execute();
     }
 
     private synchronized void onUpdate() {
@@ -127,10 +114,31 @@ public class Main extends JDialog {
         panel2.add(buttonCancel, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 
-    /**
-     * @noinspection ALL
-     */
-    public JComponent $$$getRootComponent$$$() {
-        return contentPane;
+    private class MyWorker extends SwingWorker {
+        @Override
+        protected Object doInBackground() throws Exception {
+            try {
+                Params params = new Params();
+                if (pfwd != null) {
+                    pfwd.stop();
+                }
+                pfwd = new PortForwarding();
+                pfwd.start(params.user, params.host);
+                postgresConnection = ConnectAndRun.getPostgresConnection();
+                ConnectAndRun.initPostgresForeignTable(postgresConnection, params.db, params.table);
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.out.println("Error: " + e.getMessage());
+                done();
+            }
+            return null;
+        }
+
+        @Override
+        protected void done() {
+            super.done();
+            buttonCopy.setEnabled(true);
+            buttonUpdate.setEnabled(true);
+        }
     }
 }
