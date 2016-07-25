@@ -50,6 +50,13 @@ public class ConnectAndRun {
         stmt.execute(String.format(createForeignTableSql, DB_TABLE));
         stmt.execute("DROP TABLE IF EXISTS local_table;");
         stmt.execute("CREATE TABLE local_table AS SELECT * FROM foreign_table;");
+
+
+        rs = stmt.executeQuery("SELECT COUNT(*) AS count FROM local_table");
+        while (rs.next()) {
+            int count = rs.getInt("count");
+            System.out.println(String.format("Fetched a total of %d entries", count));
+        }
     }
 
     private static void createPgExtension(Statement stmt, String extName) throws SQLException {
@@ -69,7 +76,8 @@ public class ConnectAndRun {
         Statement stmt = conn.createStatement();
         setUserMapping(stmt);
         String updateSql = "INSERT INTO local_table SELECT * FROM foreign_table WHERE  id > (SELECT max(id) FROM local_table) ORDER BY id ASC;";
-        stmt.execute(updateSql);
+        int newRowCount = stmt.executeUpdate(updateSql);
+        System.out.println(String.format("Fetched %d new rows", newRowCount));
     }
 
     private static void setUserMapping(Statement stmt) throws SQLException {
