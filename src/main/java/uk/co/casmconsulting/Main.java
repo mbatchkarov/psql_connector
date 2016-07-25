@@ -45,6 +45,7 @@ public class Main extends JDialog {
         PrintStream printStream = new PrintStream(new JTextAreaOutputStream(textArea1));
         System.setOut(printStream);
         System.setErr(printStream);
+        System.out.println("Welcome to Method52 Database Connector. This program will connect you to " + new Params());
     }
 
     private synchronized void onInit() {

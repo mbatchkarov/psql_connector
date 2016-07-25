@@ -20,4 +20,9 @@ public class Params {
         user = prop.getProperty("user");
         host = prop.getProperty("host");
     }
+
+    @Override
+    public String toString() {
+        return String.format("database %s, table %s", db, table);
+    }
 }
