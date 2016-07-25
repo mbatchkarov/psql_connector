@@ -8,38 +8,29 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintStream;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Properties;
 
 public class Main extends JDialog {
     private JPanel contentPane;
-    private JButton buttonOK;
+    private JButton buttonCopy;
+    private JButton buttonUpdate;
     private JButton buttonCancel;
     private JTextArea textArea1;
 
     private PortForwarding pfwd;
     private Connection postgresConnection;
 
-    private void initConnection() throws SQLException, IOException {
-        Params params = new Params();
-        pfwd = new PortForwarding();
-        pfwd.start(params.user, params.host);
-        postgresConnection = ConnectAndRun.getPostgresConnection();
-        ConnectAndRun.initPostgresForeignTable(postgresConnection, params.db, params.table);
-    }
-
     public Main() throws SQLException, IOException {
         // UI stuff
         setupUI();
         setContentPane(contentPane);
         setModal(true);
-        getRootPane().setDefaultButton(buttonOK);
+        getRootPane().setDefaultButton(buttonCopy);
 
-        buttonOK.addActionListener(e -> onUpdate());
-
+        buttonUpdate.addActionListener(e -> onUpdate());
+        buttonCopy.addActionListener(e -> onInit());
         buttonCancel.addActionListener(e -> onStop());
 
         // stop when close button of the JFrame is clicked
@@ -54,10 +45,28 @@ public class Main extends JDialog {
         PrintStream printStream = new PrintStream(new JTextAreaOutputStream(textArea1));
         System.setOut(printStream);
         System.setErr(printStream);
-        initConnection();
     }
 
-    private void onUpdate() {
+    private synchronized void onInit() {
+        try {
+            Params params = new Params();
+            if (pfwd != null) {
+                pfwd.stop();
+            }
+            pfwd = new PortForwarding();
+            pfwd.start(params.user, params.host);
+            postgresConnection = ConnectAndRun.getPostgresConnection();
+            ConnectAndRun.initPostgresForeignTable(postgresConnection, params.db, params.table);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            System.out.println("Error: " + e.getMessage());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    private synchronized void onUpdate() {
         try {
             ConnectAndRun.updateForeignTable(postgresConnection);
         } catch (SQLException e) {
@@ -66,8 +75,10 @@ public class Main extends JDialog {
     }
 
     private void onStop() {
-        System.out.println("Closing connection");
-        pfwd.stop();
+        if (pfwd != null) {
+            System.out.println("Closing connection");
+            pfwd.stop();
+        }
         dispose();
 
     }
@@ -103,14 +114,17 @@ public class Main extends JDialog {
         final Spacer spacer1 = new Spacer();
         panel1.add(spacer1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
         final JPanel panel2 = new JPanel();
-        panel2.setLayout(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), -1, -1, true, false));
+        panel2.setLayout(new GridLayoutManager(1, 3, new Insets(0, 0, 0, 0), -1, -1, true, false));
         panel1.add(panel2, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
-        buttonOK = new JButton();
-        buttonOK.setText("Update data");
-        panel2.add(buttonOK, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        buttonCopy = new JButton();
+        buttonCopy.setText("Copy all data");
+        panel2.add(buttonCopy, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        buttonUpdate = new JButton();
+        buttonUpdate.setText("Get new data");
+        panel2.add(buttonUpdate, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         buttonCancel = new JButton();
         buttonCancel.setText("Quit");
-        panel2.add(buttonCancel, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        panel2.add(buttonCancel, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 
     /**
