@@ -72,6 +72,10 @@ public class ConnectAndRun {
 
 
     public static void updateForeignTable(Connection conn) throws SQLException {
+        if (conn == null){
+            System.out.println("Not connected to a database. Check for error messages above.");
+            return;
+        }
         System.out.println("Fetching new data from remote table");
         Statement stmt = conn.createStatement();
         setUserMapping(stmt);

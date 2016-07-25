@@ -10,10 +10,12 @@ package uk.co.casmconsulting; /**
  */
 
 import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 
 
@@ -26,34 +28,29 @@ public class PortForwarding {
 
     private Session session;
 
-    public void start(String user, String host) {
-        try {
-            JSch jsch = new JSch();
+    public void start(String user, String host) throws IOException, JSchException {
+        JSch jsch = new JSch();
 
-            // copy private key to a temp file because jsch insist on reading from a file
-            InputStream ddlStream = getClass().getResourceAsStream("/" + userKeyFile);
-            File temp = File.createTempFile("temp-prvkey", ".tmp");
-            temp.deleteOnExit();
+        // copy private key to a temp file because jsch insist on reading from a file
+        InputStream ddlStream = getClass().getResourceAsStream("/" + userKeyFile);
+        File temp = File.createTempFile("temp-prvkey", ".tmp");
+        temp.deleteOnExit();
 
-            try (FileOutputStream fos = new FileOutputStream(temp);) {
-                byte[] buf = new byte[2048];
-                int r;
-                while (-1 != (r = ddlStream.read(buf))) {
-                    fos.write(buf, 0, r);
-                }
+        try (FileOutputStream fos = new FileOutputStream(temp);) {
+            byte[] buf = new byte[2048];
+            int r;
+            while (-1 != (r = ddlStream.read(buf))) {
+                fos.write(buf, 0, r);
             }
-
-            jsch.addIdentity(temp.getAbsolutePath());
-            jsch.setKnownHosts(getClass().getResourceAsStream("/" + serverKeyFile));
-            temp.delete();
-            session = jsch.getSession(user, host, 22);
-            session.connect();
-            int assignedPort = session.setPortForwardingL(lport, rhost, rport);
-            System.out.println("Tunneling localhost:" + assignedPort + " -> " + rhost + ":" + rport);
-        } catch (Exception e) {
-            System.out.println(e);
-            e.printStackTrace();
         }
+
+        jsch.addIdentity(temp.getAbsolutePath());
+        jsch.setKnownHosts(getClass().getResourceAsStream("/" + serverKeyFile));
+        temp.delete();
+        session = jsch.getSession(user, host, 22);
+        session.connect();
+        int assignedPort = session.setPortForwardingL(lport, rhost, rport);
+        System.out.println("Tunneling localhost:" + assignedPort + " -> " + rhost + ":" + rport);
 
     }
 

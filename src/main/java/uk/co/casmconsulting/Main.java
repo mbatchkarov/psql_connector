@@ -3,6 +3,7 @@ package uk.co.casmconsulting;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
+import com.jcraft.jsch.JSchException;
 
 import javax.swing.*;
 import java.awt.*;
@@ -124,8 +125,18 @@ public class Main extends JDialog {
                     pfwd.stop();
                 }
                 pfwd = new PortForwarding();
-                pfwd.start(params.user, params.host);
-                postgresConnection = ConnectAndRun.getPostgresConnection();
+                try {
+                    pfwd.start(params.user, params.host);
+                } catch (JSchException e) {
+                    System.out.println("SSH error: " + e.getMessage() + ". Are you running another M52 connector?");
+                    return null;
+                }
+                try {
+                    postgresConnection = ConnectAndRun.getPostgresConnection();
+                } catch (SQLException e) {
+                    System.out.println("Database error: " + e.getMessage() + ". Is Postgres running on your computer?");
+                    return null;
+                }
                 ConnectAndRun.initPostgresForeignTable(postgresConnection, params.db, params.table);
             } catch (Exception e) {
                 e.printStackTrace();
