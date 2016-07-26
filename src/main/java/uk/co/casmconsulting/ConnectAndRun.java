@@ -17,7 +17,8 @@ import java.util.Properties;
 public class ConnectAndRun {
 
     public static Connection getRemotePostgresConnection(String db) throws SQLException {
-        PostgreSQLConnection params = new PostgreSQLConnection().setUser("postgres").setDatabase(db).setPort(4321);
+        PostgreSQLConnection params = new PostgreSQLConnection().setUser("postgres")
+                .setDatabase(db).setPort(4321).setHost("127.0.0.1");
         return params.buildConnection();
     }
 
@@ -26,7 +27,9 @@ public class ConnectAndRun {
         return params.buildConnection();
     }
 
-    public static void initPostgresForeignTable(Connection localConn, Connection remoteConn, String remoteTable, String remoteDb) throws SQLException {
+    public static void initPostgresForeignTable(Connection localConn, String remoteDb, String remoteTable) throws SQLException {
+        String remoteTableDefinition = getRemoteTableColumnDescription(remoteDb, remoteTable);
+
         System.out.println("Preparing your local database");
         Statement localStatement = localConn.createStatement();
 
@@ -35,7 +38,7 @@ public class ConnectAndRun {
         while (rs.next()) {
             String localDB = rs.getString("db");
             System.out.println(String.format("Creating local copy of remote DB '%s.%s' in local DB '%s'",
-                                             remoteTable, remoteDb, localDB));
+                                             remoteDb, remoteTable, localDB));
         }
         createPgExtension(localStatement, "dblink");
         createPgExtension(localStatement, "postgres_fdw");
@@ -43,28 +46,20 @@ public class ConnectAndRun {
 
         // prepared statements cant be used to parameterise table names
         String connectDblinkSql = "SELECT dblink_connect('hostaddr=127.0.0.1 port=4321 dbname=%s user=postgres');";
-        localStatement.execute(String.format(connectDblinkSql, remoteTable));
+        localStatement.execute(String.format(connectDblinkSql, remoteDb));
 
         localStatement.execute("DROP SERVER IF EXISTS server CASCADE;");
 
         String createServerSql = "CREATE SERVER server FOREIGN DATA WRAPPER postgres_fdw OPTIONS (host '127.0.01', port '4321', dbname '%s');";
-        localStatement.execute(String.format(createServerSql, remoteTable));
+        localStatement.execute(String.format(createServerSql, remoteDb));
 
         setUserMapping(localStatement);
         localStatement.execute("DROP FOREIGN TABLE IF EXISTS foreign_table;");
 
 
-        String blah = getRemoteTableColumnDescriptions(remoteConn, remoteTable);
-
-        // column definition needs to be dynamically generated. Explain how this works and why
-        // PG9.5 (Jan 2016) supports IMPORT FOREIGN SCHEMA
-        // Otherwise execute this on the remote machine (start tunnel, then connect to database, then run this):
-        // select table_name, column_name, ordinal_position, data_type from information_schema.columns where table_name = 'unix_users';
         String createForeignTableSql = "CREATE FOREIGN TABLE foreign_table (%s) SERVER server OPTIONS (schema_name 'public', table_name '%s');";
-        // todo this does not seem to create the columns. is it something to do with my use of double quotes around column names
-        String format = String.format(createForeignTableSql, blah, remoteDb);
-        System.out.println(format);
-        boolean execute = localStatement.execute(format);
+        String format = String.format(createForeignTableSql, remoteTableDefinition, remoteTable);
+        localStatement.execute(format);
         localStatement.execute("DROP TABLE IF EXISTS local_table;");
         localStatement.execute("CREATE TABLE local_table AS SELECT * FROM foreign_table;");
 
@@ -76,15 +71,39 @@ public class ConnectAndRun {
         }
     }
 
-    private static String getRemoteTableColumnDescriptions(Connection remoteConn, String remoteTable) throws SQLException {
+    /**
+     * To create a foreign table, we need to specify its column names and types, e.g.
+     * CREATE FOREIGN TABLE name (id integer, quantity integer, description text)
+     * This column definition needs to be dynamically generated.
+     * To do this, execute this on the remote machine (start tunnel, then connect to database, then run this):
+     * SELECT table_name, column_name, ordinal_position, data_type FROM information_schema.columns FROM table_name = 'name';
+     *
+     * Postgres 9.5 (Jan 2016) supports IMPORT FOREIGN SCHEMA, which will simplify this greatly
+     *
+     * @param remoteDb
+     * @param remoteTable
+     * @return
+     * @throws SQLException
+     */
+    public static String getRemoteTableColumnDescription(String remoteDb, String remoteTable) throws SQLException {
+        System.out.println("Getting remote table definition");
+        Connection remoteConn = getRemotePostgresConnection(remoteDb);
         Statement remoteStatement = remoteConn.createStatement();
         StringBuilder sb = new StringBuilder().append("id serial NOT NULL");
         String selectColumnsSql = "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '%s' AND column_name != 'id' ORDER BY ordinal_position";
         ResultSet rs = remoteStatement.executeQuery(String.format(selectColumnsSql, remoteTable));
+        int columnCount = 0;
         while (rs.next()) {
             sb.append(String.format(", \"%s\" %s",
                                     rs.getString("column_name"), rs.getString("data_type")));
+            columnCount++;
         }
+        if (columnCount == 0) {
+            String reason = "Could not find any columns in the remote table (possibly with the exception of id)";
+            System.out.println(reason);
+            throw new SQLException(reason);
+        }
+        remoteConn.close();
         return sb.toString();
     }
 

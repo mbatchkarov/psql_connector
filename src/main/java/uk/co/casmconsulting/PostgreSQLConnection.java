@@ -13,14 +13,10 @@ public final class PostgreSQLConnection {
     private String host = "localhost";
     private String user;
     private String password;
-    private Integer port = Integer.valueOf(5432);
+    private int port = 5432;
     private String database;
 
     public PostgreSQLConnection() {
-    }
-
-    public String getHost() {
-        return this.host;
     }
 
     public PostgreSQLConnection setHost(String host) {
@@ -28,17 +24,9 @@ public final class PostgreSQLConnection {
         return this;
     }
 
-    public String getUser() {
-        return this.user;
-    }
-
     public PostgreSQLConnection setUser(String user) {
         this.user = user;
         return this;
-    }
-
-    public String getPassword() {
-        return this.password;
     }
 
     public PostgreSQLConnection setPassword(String password) {
@@ -50,17 +38,9 @@ public final class PostgreSQLConnection {
         return "jdbc:postgresql://%s:%d/%s";
     }
 
-    public int getPort() {
-        return this.port.intValue();
-    }
-
     public PostgreSQLConnection setPort(int port) {
-        this.port = Integer.valueOf(port);
+        this.port = port;
         return this;
-    }
-
-    public String getDatabase() {
-        return this.database;
     }
 
     public PostgreSQLConnection setDatabase(String database) {
@@ -68,15 +48,11 @@ public final class PostgreSQLConnection {
         return this;
     }
 
-    public URL buildUrl() throws MalformedURLException {
-        return new URL(this.buildUrlString());
-    }
-
     public String buildUrlString() {
-        return String.format(this.getUrlFormat(), new Object[]{this.getHost(), Integer.valueOf(this.getPort()), this.getDatabase()});
+        return String.format(getUrlFormat(), host, port, database);
     }
 
     public Connection buildConnection() throws SQLException {
-        return DriverManager.getConnection(this.buildUrlString(), this.getUser(), this.getPassword());
+        return DriverManager.getConnection(buildUrlString(), user, password);
     }
 }

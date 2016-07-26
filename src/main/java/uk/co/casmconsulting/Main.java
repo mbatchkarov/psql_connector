@@ -21,7 +21,7 @@ public class Main extends JDialog {
     private JTextArea textArea1;
 
     private PortForwarding pfwd;
-    private Connection localPostgresConnection, remotePostgresConnection;
+    private Connection localPostgresConnection;
 
     public Main() throws SQLException, IOException {
         // UI stuff
@@ -97,8 +97,8 @@ public class Main extends JDialog {
                                             null, null, null, 0, false));
         scrollPane1.setBorder(BorderFactory.createTitledBorder("Status"));
         textArea1 = new JTextArea();
-//        textArea1.setEditable(false);//todo enable
-//        textArea1.setEnabled(false);
+        textArea1.setEditable(false);
+        textArea1.setEnabled(false);
         textArea1.setLineWrap(true);
         scrollPane1.setViewportView(textArea1);
         final JPanel panel1 = new JPanel();
@@ -154,13 +154,11 @@ public class Main extends JDialog {
                 }
                 try {
                     localPostgresConnection = ConnectAndRun.getLocalPostgresConnection();
-                    remotePostgresConnection = ConnectAndRun.getRemotePostgresConnection(params.db);
                 } catch (SQLException e) {
                     System.out.println("Database error: " + e.getMessage() + ". Is Postgres running on your computer?");
                     return null;
                 }
-                ConnectAndRun.initPostgresForeignTable(localPostgresConnection, remotePostgresConnection, params.db,
-                                                       params.table);
+                ConnectAndRun.initPostgresForeignTable(localPostgresConnection, params.db, params.table);
             } catch (Exception e) {
                 e.printStackTrace();
                 System.out.println("Error: " + e.getMessage());
