@@ -21,7 +21,7 @@ public class Main extends JDialog {
     private JTextArea textArea1;
 
     private PortForwarding pfwd;
-    private Connection postgresConnection;
+    private Connection localPostgresConnection, remotePostgresConnection;
 
     public Main() throws SQLException, IOException {
         // UI stuff
@@ -46,18 +46,18 @@ public class Main extends JDialog {
         PrintStream printStream = new PrintStream(new JTextAreaOutputStream(textArea1));
         System.setOut(printStream);
         System.setErr(printStream);
-        System.out.println("Welcome to Method52 Database Connector. This program will connect you to " + new Params());
+        System.out.println("Welcome to Method52 Database Connector. This program will connect you to " + Params.fromFile());
     }
 
     private synchronized void onInit() {
         buttonCopy.setEnabled(false);
         buttonUpdate.setEnabled(false);
-        new MyWorker().execute();
+        new CopyAllData().execute();
     }
 
     private synchronized void onUpdate() {
         try {
-            ConnectAndRun.updateForeignTable(postgresConnection);
+            ConnectAndRun.updateForeignTable(localPostgresConnection);
         } catch (SQLException e) {
             System.out.println("Error: " + e.getMessage());
         }
@@ -90,37 +90,58 @@ public class Main extends JDialog {
         contentPane.setAutoscrolls(true);
         contentPane.setMinimumSize(new Dimension(350, 300));
         final JScrollPane scrollPane1 = new JScrollPane();
-        contentPane.add(scrollPane1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
+        contentPane.add(scrollPane1,
+                        new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW,
+                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW,
+                                            null, null, null, 0, false));
         scrollPane1.setBorder(BorderFactory.createTitledBorder("Status"));
         textArea1 = new JTextArea();
-        textArea1.setEditable(false);
-        textArea1.setEnabled(false);
+//        textArea1.setEditable(false);//todo enable
+//        textArea1.setEnabled(false);
         textArea1.setLineWrap(true);
         scrollPane1.setViewportView(textArea1);
         final JPanel panel1 = new JPanel();
         panel1.setLayout(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), -1, -1));
-        contentPane.add(panel1, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null, null, 0, false));
+        contentPane.add(panel1,
+                        new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
+                                            1, null, null, null, 0, false));
         final Spacer spacer1 = new Spacer();
-        panel1.add(spacer1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
+        panel1.add(spacer1,
+                   new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
+                                       GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
         final JPanel panel2 = new JPanel();
         panel2.setLayout(new GridLayoutManager(1, 3, new Insets(0, 0, 0, 0), -1, -1, true, false));
-        panel1.add(panel2, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
+        panel1.add(panel2, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+                                               GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
+                                               GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
+                                               null, null, null, 0, false));
         buttonCopy = new JButton();
         buttonCopy.setText("Copy all data");
-        panel2.add(buttonCopy, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        panel2.add(buttonCopy,
+                   new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
+                                       GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
+                                       GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         buttonUpdate = new JButton();
         buttonUpdate.setText("Get new data");
-        panel2.add(buttonUpdate, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        panel2.add(buttonUpdate,
+                   new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
+                                       GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
+                                       GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         buttonCancel = new JButton();
         buttonCancel.setText("Quit");
-        panel2.add(buttonCancel, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        panel2.add(buttonCancel,
+                   new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
+                                       GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
+                                       GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 
-    private class MyWorker extends SwingWorker {
+    private class CopyAllData extends SwingWorker {
         @Override
         protected Object doInBackground() throws Exception {
             try {
-                Params params = new Params();
+                Params params = Params.fromFile();
                 if (pfwd != null) {
                     pfwd.stop();
                 }
@@ -132,12 +153,14 @@ public class Main extends JDialog {
                     return null;
                 }
                 try {
-                    postgresConnection = ConnectAndRun.getPostgresConnection();
+                    localPostgresConnection = ConnectAndRun.getLocalPostgresConnection();
+                    remotePostgresConnection = ConnectAndRun.getRemotePostgresConnection(params.db);
                 } catch (SQLException e) {
                     System.out.println("Database error: " + e.getMessage() + ". Is Postgres running on your computer?");
                     return null;
                 }
-                ConnectAndRun.initPostgresForeignTable(postgresConnection, params.db, params.table);
+                ConnectAndRun.initPostgresForeignTable(localPostgresConnection, remotePostgresConnection, params.db,
+                                                       params.table);
             } catch (Exception e) {
                 e.printStackTrace();
                 System.out.println("Error: " + e.getMessage());

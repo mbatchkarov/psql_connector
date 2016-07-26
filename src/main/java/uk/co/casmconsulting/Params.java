@@ -10,15 +10,20 @@ import java.util.Properties;
 public class Params {
     public String db, table, user, host;
 
-    public Params() throws IOException {
+    private Params(String db, String table, String user, String host) {
+        this.db = db;
+        this.table = table;
+        this.user = user;
+        this.host = host;
+    }
+
+    public static Params fromFile() throws IOException {
         Properties prop = new Properties();
         try (InputStream in = ConnectAndRun.class.getResourceAsStream("/connection");) {
             prop.load(in);
         }
-        db = prop.getProperty("db");
-        table = prop.getProperty("table");
-        user = prop.getProperty("user");
-        host = prop.getProperty("host");
+        return new Params(prop.getProperty("db"), prop.getProperty("table"),
+                          prop.getProperty("user"), prop.getProperty("host"));
     }
 
     @Override
